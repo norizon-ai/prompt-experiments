@@ -1,0 +1,93 @@
+# Query Reformulator Prompts
+# Used to reformulate user queries for better search results.
+
+reformulate_query: |
+  Extract the most important search terms from this query.
+
+  Return only the key terms separated by spaces, nothing else.
+  Limit to {max_terms} terms maximum.
+
+  Focus on:
+  - Technical terms and jargon
+  - Nouns and key concepts
+  - Action verbs
+  - Keep the original language of the terms (German or English)
+
+  ## Document Code Preservation
+  ALWAYS preserve these patterns exactly as written:
+  - AWA-xxx (work instructions: AWA-201, AWA-305)
+  - PRJ-xxx (project codes: PRJ-001, PRJ-1234)
+  - QMH-xxx (quality management: QMH-001)
+  - ISO/DIN/EN standards with numbers (ISO 12100, DIN EN 60204)
+
+  These codes are critical search keys - never paraphrase or remove them.
+
+  Query: {query}
+
+  Search terms:
+
+reformulate_for_tickets: |
+  Reformulate this question for searching support tickets.
+
+  Focus on:
+  - Error messages and codes
+  - Problem symptoms
+  - System components mentioned
+  - Actions that failed
+
+  Limit to {max_terms} terms.
+
+  Query: {query}
+
+  Search terms:
+
+reformulate_for_docs: |
+  Reformulate this question for searching documentation.
+
+  Focus on:
+  - Feature names
+  - Commands and procedures
+  - Configuration options
+  - Conceptual topics
+
+  Limit to {max_terms} terms.
+
+  Query: {query}
+
+  Search terms:
+
+reformulate_for_german_technical: |
+  Du bist ein Experte für deutsche technische Dokumentation im Maschinenbau.
+  Extrahiere die wichtigsten Suchbegriffe aus dieser Frage.
+
+  REGELN:
+  1. Extrahiere Produktcodes exakt (z.B. RC-3000, LTS-X, DMS-200, VS-Pro)
+  2. Zerlege deutsche Komposita in Einzelbegriffe:
+     - "Sicherheitssteuerung" → "Sicherheit Steuerung Sicherheitssteuerung"
+     - "Wartungsanleitung" → "Wartung Anleitung Wartungsanleitung"
+     - "Positioniergenauigkeit" → "Positionierung Genauigkeit Positioniergenauigkeit"
+  3. Füge relevante Synonyme hinzu:
+     - "Wartung" → auch "Instandhaltung", "Service"
+     - "Fehler" → auch "Störung", "Problem"
+     - "Spezifikation" → auch "Datenblatt", "technische Daten"
+  4. Behalte Normen und Standards (ISO, DIN, EN)
+  5. Behalte Dokumentcodes exakt (AWA-xxx, PRJ-xxx, QMH-xxx)
+  6. Maximal {max_terms} Begriffe
+
+  Frage: {query}
+
+  Suchbegriffe (nur Begriffe, durch Leerzeichen getrennt):
+
+reformulate_multi_query: |
+  Generate {num_variants} different search query variants for this question.
+  Each variant should approach the question from a different angle.
+
+  Original question: {query}
+
+  Rules:
+  1. Keep product codes exact (e.g., RC-3000, LTS-X)
+  2. Use different phrasings and synonyms
+  3. Include both German and English technical terms where relevant
+  4. Each query on a new line, no numbering
+
+  Query variants:

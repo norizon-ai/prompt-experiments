@@ -1,0 +1,87 @@
+# Speaker name patterns — used by the code-side post-processing filters.
+#
+# {name} is replaced with the (regex-escaped) speaker name at runtime.
+# All patterns are matched against lowercased text.
+# To add a new language: just append its patterns to the relevant category.
+# No code changes or container rebuilds needed.
+
+# ---------------------------------------------------------------------------
+# Greeting patterns
+# If a speaker's text matches one of these, they are GREETING {name} —
+# they are NOT {name} themselves.  Used by greeter deduplication.
+# ---------------------------------------------------------------------------
+greeting:
+  # English
+  - 'welcome[,\s]+{name}'
+  - '{name}[,\s]+thanks'
+  - 'thanks\s+{name}'
+  - 'thank you[,\s]+{name}'
+  - 'hi[,\s]+{name}'
+  - 'hello[,\s]+{name}'
+  - '{name}[,\s]+welcome'
+  - '{name}[,\s]+glad'
+  - 'glad\s+.*{name}'
+  # German
+  - 'willkommen[,\s]+{name}'
+  - 'hallo[,\s]+{name}'
+  - '{name}[,\s]+willkommen'
+  - 'schön[,\s]+dass.*{name}'
+  - 'freut\s+mich.*{name}'
+  - '{name}[,\s]+danke'
+  - 'danke[,\s]+{name}'
+
+# ---------------------------------------------------------------------------
+# Self-introduction patterns (full name)
+# If a speaker's text matches, they ARE {name}.  Used as tiebreaker when
+# greeting patterns do not resolve a duplicate.
+# ---------------------------------------------------------------------------
+self_intro:
+  # English
+  - 'i.?m\s+{name}'
+  - 'i am\s+{name}'
+  - 'my name is\s+{name}'
+  - '{name}\s+from\s'
+  - 'hi[.,\s]+{name}'
+  - 'hello[.,\s]+{name}'
+  - 'this is\s+{name}'
+  - '{name}\s+here'
+  # German
+  - 'ich bin\s+{name}'
+  - 'mein name ist\s+{name}'
+  - 'ich heiße\s+{name}'
+  - 'hier ist\s+{name}'
+  - '{name}\s+hier'
+
+# ---------------------------------------------------------------------------
+# Self-introduction patterns (first name only)
+# Applied only when first_name != full_name — catches short intros like
+# "Hi. Brent." or "Hallo. Alice."
+# ---------------------------------------------------------------------------
+self_intro_first_name:
+  # English
+  - 'hi[.,\s]+{name}[.\s]'
+  - '{name}[.,\s]+from\s'
+  # German
+  - 'hallo[.,\s]+{name}[.\s]'
+  - 'ich bin\s+{name}[.\s]'
+
+# ---------------------------------------------------------------------------
+# Quotation / reference patterns
+# If a name appears ONLY via these patterns in a speaker's text, the
+# speaker is referencing {name} — not being {name}.  Used by the quotation
+# filter to strip false-positive name assignments.
+# ---------------------------------------------------------------------------
+quotation:
+  # English
+  - '{name}\s+said'
+  - 'said\s+{name}'
+  - 'according\s+to\s+{name}'
+  - '{name}\s+mentioned'
+  - '{name}\s+told'
+  - 'told\s+{name}'
+  # German
+  - '{name}\s+sagte'
+  - 'sagte\s+{name}'
+  - 'laut\s+{name}'
+  - '{name}\s+erwähnte'
+  - '{name}\s+meinte'
