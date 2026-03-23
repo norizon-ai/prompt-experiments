@@ -10,9 +10,14 @@ Configurable via .env file or direct parameters.
 import os
 from typing import Optional
 
+from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI
 
+# Load .env from project root (works whether called from notebooks/ or root)
+_project_root = Path(__file__).resolve().parent.parent
+load_dotenv(_project_root / ".env")
+# Also try current directory as fallback
 load_dotenv()
 
 # Model → provider mapping
