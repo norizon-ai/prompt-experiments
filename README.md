@@ -2,25 +2,6 @@
 
 Isolated environment for testing and improving LLM prompts used across the Norizon platform.
 
-## Setup
-
-```bash
-# 1. Clone this repo
-git clone https://github.com/norizon-ai/prompt-experiments.git
-cd prompt-experiments
-
-# 2. Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # macOS/Linux
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Configure API key
-cp .env.example .env
-# Edit .env and add your OpenAI API key
-```
-
 ## Structure
 
 ```

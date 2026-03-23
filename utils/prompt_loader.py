@@ -1,7 +1,9 @@
 """
-YAML prompt loader with variable injection.
+YAML prompt loader with variable injection and model-variant support.
 
-Loads prompt files from the prompts/ directory and fills {{variable}} placeholders.
+Loads prompt files from the prompts/ directory and fills {variable} placeholders.
+Supports model-specific overrides (prepend, append, wrap) for tuning prompts
+to different LLMs (e.g. gpt-4o vs mistral-25b).
 """
 
 import re
@@ -27,6 +29,65 @@ def load_prompt(prompt_path: str) -> Dict[str, Any]:
 
     with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
+
+
+def get_template(prompt_data: Dict[str, Any], key: str, model: Optional[str] = None) -> str:
+    """
+    Get a prompt template from loaded YAML data, with optional model overrides.
+
+    Supports three YAML formats:
+    1. Plain string:  ``system: |``
+    2. Dict with base + model_overrides:
+       ```
+       system:
+         base: |
+           ...shared prompt...
+         model_overrides:
+           mistral-25b:
+             prepend: "extra before"
+             append: "extra after"
+             wrap: "[INST] {base} [/INST]"
+       ```
+    3. Dict with template key (legacy)
+
+    Args:
+        prompt_data: Dict from load_prompt().
+        key: Which prompt key to get (e.g. 'system', 'generate_report').
+        model: Optional model name. If the prompt has overrides for this model, they're applied.
+
+    Returns:
+        The template string (with model overrides applied if applicable).
+    """
+    if key not in prompt_data:
+        raise KeyError(f"Prompt key '{key}' not found. Available: {list(prompt_data.keys())}")
+
+    entry = prompt_data[key]
+
+    # Plain string
+    if not isinstance(entry, dict):
+        return str(entry)
+
+    # Model-variant format (has "base" key)
+    if "base" in entry:
+        template = str(entry["base"])
+
+        if model and "model_overrides" in entry:
+            overrides = entry["model_overrides"].get(model, {})
+            if overrides:
+                if "prepend" in overrides:
+                    template = str(overrides["prepend"]) + "\n" + template
+                if "append" in overrides:
+                    template = template + "\n" + str(overrides["append"])
+                if "wrap" in overrides:
+                    template = str(overrides["wrap"]).replace("{base}", template)
+
+        return template
+
+    # Legacy dict with "template" key
+    if "template" in entry:
+        return str(entry["template"])
+
+    raise KeyError(f"Prompt '{key}' is a dict but has no 'base' or 'template' key")
 
 
 def fill_prompt(template: str, variables: Dict[str, str]) -> str:

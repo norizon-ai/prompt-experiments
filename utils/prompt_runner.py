@@ -1,7 +1,7 @@
 """
-Prompt runner — load, fill, call, compare.
+Prompt runner — load, fill, call, compare across models.
 
-Orchestrates the full prompt testing workflow.
+Orchestrates the full prompt testing workflow with model-variant support.
 """
 
 import json
@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from utils.api_client import call_model
-from utils.prompt_loader import fill_prompt, load_prompt
+from utils.prompt_loader import fill_prompt, get_template, load_prompt
 
 
 def run_prompt(
@@ -20,6 +20,7 @@ def run_prompt(
     prompt_key: str = "system",
     user_key: Optional[str] = None,
     user_message: Optional[str] = None,
+    target_model: Optional[str] = None,
     **kwargs,
 ) -> Dict[str, Any]:
     """
@@ -31,24 +32,28 @@ def run_prompt(
         prompt_key: Which key in the YAML to use as system prompt (default: 'system').
         user_key: Optional key in the YAML to use as user prompt.
         user_message: Direct user message string (used if user_key is not set).
+        target_model: Optional model name for model-specific prompt overrides
+                      (e.g. "gpt-4o", "mistral-25b"). Also used as the model for the API call.
         **kwargs: Passed to call_model (model, temperature, max_tokens).
 
     Returns:
-        Dict with 'output', 'prompt_key', 'duration_seconds', 'timestamp'.
+        Dict with 'output', 'prompt_key', 'duration_seconds', 'timestamp', 'target_model'.
     """
-    system_template = prompt.get(prompt_key, "")
-    if not system_template:
-        raise ValueError(f"Prompt key '{prompt_key}' not found. Available: {list(prompt.keys())}")
-
+    system_template = get_template(prompt, prompt_key, model=target_model)
     system_filled = fill_prompt(system_template, variables)
 
     # Build user message
-    if user_key and user_key in prompt:
-        user_filled = fill_prompt(prompt[user_key], variables)
+    if user_key:
+        user_template = get_template(prompt, user_key, model=target_model)
+        user_filled = fill_prompt(user_template, variables)
     elif user_message:
         user_filled = fill_prompt(user_message, variables)
     else:
         user_filled = variables.get("query", variables.get("task", ""))
+
+    # Use target_model as the API model if not explicitly set in kwargs
+    if target_model and "model" not in kwargs:
+        kwargs["model"] = target_model
 
     start = time.time()
     output = call_model(system_filled, user_filled, **kwargs)
@@ -57,6 +62,7 @@ def run_prompt(
     return {
         "output": output,
         "prompt_key": prompt_key,
+        "target_model": target_model or kwargs.get("model", "default"),
         "duration_seconds": round(duration, 2),
         "timestamp": datetime.now().isoformat(),
     }
@@ -67,6 +73,7 @@ def run_test_cases(
     test_cases: List[Dict[str, Any]],
     prompt_key: str = "system",
     user_key: Optional[str] = None,
+    target_model: Optional[str] = None,
     **kwargs,
 ) -> List[Dict[str, Any]]:
     """
@@ -77,6 +84,7 @@ def run_test_cases(
         test_cases: List of dicts, each with a 'variables' key and optional 'name'.
         prompt_key: Which key in the YAML to use as system prompt.
         user_key: Optional key for user prompt.
+        target_model: Optional model name for model-specific overrides.
         **kwargs: Passed to call_model.
 
     Returns:
@@ -92,7 +100,7 @@ def run_test_cases(
 
         result = run_prompt(
             prompt, variables, prompt_key, user_key,
-            user_message=user_message, **kwargs,
+            user_message=user_message, target_model=target_model, **kwargs,
         )
         result["test_name"] = test_name
         result["variables"] = variables
@@ -101,6 +109,59 @@ def run_test_cases(
         print(f"done ({result['duration_seconds']}s)")
 
     return results
+
+
+def compare_models(
+    prompt: Dict[str, str],
+    variables: Dict[str, str],
+    prompt_key: str = "system",
+    models: List[str] = None,
+    user_key: Optional[str] = None,
+    user_message: Optional[str] = None,
+    **kwargs,
+) -> Dict[str, Any]:
+    """
+    Run the same prompt against multiple models and compare outputs.
+
+    Args:
+        prompt: Dict from a loaded YAML prompt file.
+        variables: Variables to inject.
+        prompt_key: Which prompt key to use.
+        models: List of model names (e.g. ["gpt-4o", "mistral-25b"]).
+        user_key: Optional user prompt key.
+        user_message: Optional direct user message.
+        **kwargs: Passed to call_model.
+
+    Returns:
+        Dict with 'models' (list of results per model) and 'comparison' (formatted text).
+    """
+    if not models:
+        models = ["gpt-4o"]
+
+    results = {}
+    for model in models:
+        print(f"  Running with {model}...", end=" ", flush=True)
+        result = run_prompt(
+            prompt, variables, prompt_key, user_key,
+            user_message=user_message, target_model=model, **kwargs,
+        )
+        results[model] = result
+        print(f"done ({result['duration_seconds']}s)")
+
+    # Build comparison text
+    lines = [f"# Model Comparison: {' vs '.join(models)}\n"]
+    lines.append(f"Generated: {datetime.now().isoformat()}\n")
+    lines.append(f"Prompt: {prompt_key}\n")
+
+    for model, result in results.items():
+        lines.append(f"---\n## {model} ({result['duration_seconds']}s)\n")
+        lines.append(result["output"])
+        lines.append("")
+
+    return {
+        "models": results,
+        "comparison": "\n".join(lines),
+    }
 
 
 def compare_versions(
