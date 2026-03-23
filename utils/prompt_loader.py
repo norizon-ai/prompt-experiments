@@ -3,26 +3,17 @@ YAML prompt loader with variable injection and model-variant support.
 
 Loads prompt files from the prompts/ directory and fills {variable} placeholders.
 Supports model-specific overrides (prepend, append, wrap) for tuning prompts
-to different LLMs (e.g. gpt-4o vs mistral-25b).
+to different LLMs (gpt-4o vs mistral-25b).
 """
 
 import re
+import yaml
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-import yaml
-
-
 def load_prompt(prompt_path: str) -> Dict[str, Any]:
-    """
-    Load a YAML prompt file and return its contents as a dict.
+    """Load a YAML prompt file and return its contents as a dict."""
 
-    Args:
-        prompt_path: Path to the YAML prompt file (relative or absolute).
-
-    Returns:
-        Dict with prompt keys (e.g. 'system', 'synthesize_findings', etc.)
-    """
     path = Path(prompt_path)
     if not path.exists():
         raise FileNotFoundError(f"Prompt file not found: {path}")
@@ -32,38 +23,13 @@ def load_prompt(prompt_path: str) -> Dict[str, Any]:
 
 
 def get_template(prompt_data: Dict[str, Any], key: str, model: Optional[str] = None) -> str:
-    """
-    Get a prompt template from loaded YAML data, with optional model overrides.
+    """Get a prompt template from loaded YAML data, with optional model overrides."""
 
-    Supports three YAML formats:
-    1. Plain string:  ``system: |``
-    2. Dict with base + model_overrides:
-       ```
-       system:
-         base: |
-           ...shared prompt...
-         model_overrides:
-           mistral-25b:
-             prepend: "extra before"
-             append: "extra after"
-             wrap: "[INST] {base} [/INST]"
-       ```
-    3. Dict with template key (legacy)
-
-    Args:
-        prompt_data: Dict from load_prompt().
-        key: Which prompt key to get (e.g. 'system', 'generate_report').
-        model: Optional model name. If the prompt has overrides for this model, they're applied.
-
-    Returns:
-        The template string (with model overrides applied if applicable).
-    """
     if key not in prompt_data:
         raise KeyError(f"Prompt key '{key}' not found. Available: {list(prompt_data.keys())}")
 
     entry = prompt_data[key]
 
-    # Plain string
     if not isinstance(entry, dict):
         return str(entry)
 
@@ -91,18 +57,8 @@ def get_template(prompt_data: Dict[str, Any], key: str, model: Optional[str] = N
 
 
 def fill_prompt(template: str, variables: Dict[str, str]) -> str:
-    """
-    Replace {variable} placeholders in a prompt template with actual values.
+    """Replace {variable} placeholders in a prompt template with actual values."""
 
-    Supports both {variable} and {{variable}} syntax.
-
-    Args:
-        template: The prompt template string with placeholders.
-        variables: Dict mapping variable names to their values.
-
-    Returns:
-        The filled prompt string.
-    """
     result = template
     for key, value in variables.items():
         # Replace both {key} and {{key}} patterns
@@ -112,15 +68,8 @@ def fill_prompt(template: str, variables: Dict[str, str]) -> str:
 
 
 def get_prompt_variables(template: str) -> list[str]:
-    """
-    Extract all variable names from a prompt template.
+    """Extract all variable names from a prompt template."""
 
-    Args:
-        template: The prompt template string.
-
-    Returns:
-        List of unique variable names found in the template.
-    """
     # Match both {var} and {{var}} patterns, but not JSON-like structures
     singles = re.findall(r"(?<!\{)\{(\w+)\}(?!\})", template)
     doubles = re.findall(r"\{\{(\w+)\}\}", template)
@@ -128,29 +77,15 @@ def get_prompt_variables(template: str) -> list[str]:
 
 
 def list_prompt_keys(prompt_path: str) -> list[str]:
-    """
-    List all prompt keys in a YAML file.
+    """List all prompt keys in a YAML file. => (e.g. ['system', 'synthesize_findings', ...])"""
 
-    Args:
-        prompt_path: Path to the YAML prompt file.
-
-    Returns:
-        List of top-level keys (e.g. ['system', 'synthesize_findings', ...])
-    """
     data = load_prompt(prompt_path)
     return list(data.keys())
 
 
 def list_all_prompts(prompts_dir: str = "prompts") -> Dict[str, list[str]]:
-    """
-    List all prompt files and their keys.
+    """List all prompt files and their keys."""
 
-    Args:
-        prompts_dir: Path to the prompts directory.
-
-    Returns:
-        Dict mapping filename to list of prompt keys.
-    """
     prompts_path = Path(prompts_dir)
     result = {}
     for yaml_file in sorted(prompts_path.rglob("*.yaml")):

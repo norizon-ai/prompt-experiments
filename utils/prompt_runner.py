@@ -1,5 +1,5 @@
 """
-Prompt runner — load, fill, call, compare across models.
+Prompt runner => load, fill, call, compare across models.
 
 Orchestrates the full prompt testing workflow with model-variant support.
 """
@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from utils.api_client import call_model
-from utils.prompt_loader import fill_prompt, get_template, load_prompt
+from utils.prompt_loader import fill_prompt, get_template
 
 
 def run_prompt(
@@ -23,22 +23,8 @@ def run_prompt(
     target_model: Optional[str] = None,
     **kwargs,
 ) -> Dict[str, Any]:
-    """
-    Fill a prompt template and call the LLM.
+    """Fill a prompt template and call the LLM."""
 
-    Args:
-        prompt: Dict from a loaded YAML prompt file.
-        variables: Variables to inject into the template.
-        prompt_key: Which key in the YAML to use as system prompt (default: 'system').
-        user_key: Optional key in the YAML to use as user prompt.
-        user_message: Direct user message string (used if user_key is not set).
-        target_model: Optional model name for model-specific prompt overrides
-                      (e.g. "gpt-4o", "mistral-25b"). Also used as the model for the API call.
-        **kwargs: Passed to call_model (model, temperature, max_tokens).
-
-    Returns:
-        Dict with 'output', 'prompt_key', 'duration_seconds', 'timestamp', 'target_model'.
-    """
     system_template = get_template(prompt, prompt_key, model=target_model)
     system_filled = fill_prompt(system_template, variables)
 
@@ -76,20 +62,8 @@ def run_test_cases(
     target_model: Optional[str] = None,
     **kwargs,
 ) -> List[Dict[str, Any]]:
-    """
-    Run a prompt against multiple test cases.
+    """Run a prompt against multiple test cases."""
 
-    Args:
-        prompt: Dict from a loaded YAML prompt file.
-        test_cases: List of dicts, each with a 'variables' key and optional 'name'.
-        prompt_key: Which key in the YAML to use as system prompt.
-        user_key: Optional key for user prompt.
-        target_model: Optional model name for model-specific overrides.
-        **kwargs: Passed to call_model.
-
-    Returns:
-        List of result dicts, each with 'test_name', 'variables', 'output', etc.
-    """
     results = []
     for i, tc in enumerate(test_cases):
         test_name = tc.get("name", f"test_case_{i+1}")
@@ -120,21 +94,8 @@ def compare_models(
     user_message: Optional[str] = None,
     **kwargs,
 ) -> Dict[str, Any]:
-    """
-    Run the same prompt against multiple models and compare outputs.
+    """Run the same prompt against multiple models and compare outputs."""
 
-    Args:
-        prompt: Dict from a loaded YAML prompt file.
-        variables: Variables to inject.
-        prompt_key: Which prompt key to use.
-        models: List of model names (e.g. ["gpt-4o", "mistral-25b"]).
-        user_key: Optional user prompt key.
-        user_message: Optional direct user message.
-        **kwargs: Passed to call_model.
-
-    Returns:
-        Dict with 'models' (list of results per model) and 'comparison' (formatted text).
-    """
     if not models:
         models = ["gpt-4o"]
 
@@ -170,18 +131,8 @@ def compare_versions(
     label_v1: str = "v1 (baseline)",
     label_v2: str = "v2 (improved)",
 ) -> str:
-    """
-    Format a side-by-side comparison of two prompt versions.
+    """Format a side-by-side comparison of two prompt versions."""
 
-    Args:
-        results_v1: Results from run_test_cases for version 1.
-        results_v2: Results from run_test_cases for version 2.
-        label_v1: Label for version 1.
-        label_v2: Label for version 2.
-
-    Returns:
-        Formatted markdown string with comparisons.
-    """
     lines = [f"# Prompt Comparison: {label_v1} vs {label_v2}\n"]
     lines.append(f"Generated: {datetime.now().isoformat()}\n")
 
