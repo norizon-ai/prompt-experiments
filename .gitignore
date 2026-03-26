@@ -5,5 +5,7 @@ __pycache__/
 results/*.json
 results/*.md
 !results/.gitkeep
+test_cases/*.txt
+!test_cases/meeting_01.txt
 .venv/
 venv/

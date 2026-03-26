@@ -1,50 +1,114 @@
-# Norizon AI — Prompt Experiments
+# Meeting Protocol — Prompt Experiments
 
-Isolated environment for testing and improving LLM prompts used across the Norizon platform.
+Improve the LLM prompts that generate meeting protocols from transcripts.
 
-## Structure
+## Setup
 
+```bash
+# 1. Clone the repo
+git clone https://github.com/norizon/norizon-ai-experiments.git
+cd norizon-ai-experiments
+
+# 2. Create the conda environment and install dependencies
+conda create -n norizon-experiments python=3.11 -y
+conda activate norizon-experiments
+pip install -r requirements.txt
+
+# 3. Register the Jupyter kernel
+python -m ipykernel install --user --name norizon-experiments --display-name "Norizon Experiments"
+
+# 4. Add your API keys
+cp .env.example .env
+# Fill in OPENAI_API_KEY (required) and MISTRAL_API_KEY (optional)
+
+# 5. Open the notebook
+jupyter notebook notebooks/prompt_testing.ipynb
+# Make sure the kernel is set to "Norizon Experiments"
 ```
-prompts/                  # Baseline prompts (YAML) — DO NOT edit directly
-├── deepsearch/           # Search system prompts (supervisor, agents, retriever)
-├── deepgram/             # Speaker identification prompts
-└── workflow/             # Meeting protocol generation prompts
 
-test_cases/               # Test case JSON files (exported from Excel)
-notebooks/
-└── prompt_testing.ipynb  # Main workbench — load, run, compare prompts
-utils/                    # Utility code (loader, API client, runner)
-results/                  # Experiment outputs (gitignored)
-```
+## How It Works
+
+When a meeting is processed on the platform, the system sends a **system prompt + transcript** to the LLM and gets back a **meeting protocol** (JSON with title, summary, action items, decisions, etc.).
+
+The system prompt is assembled from **blocks** in `prompts/workflow/prompt_builder.yaml`:
+
+| Block | What it does |
+|-------|-------------|
+| `base_protocol_system` | System preamble (use real names, output JSON) |
+| `extraction_from_outline` | Main instructions for generating the protocol |
+| `specificity_rules` | Quality rules (min counts, no duplicates, concrete dates) |
+| `client_meeting_rules` | Extra rules for client meetings (optional) |
+| `json_formatting_open_source` | Tells the model to output only valid JSON |
+
+All blocks exist in `_de` and `_en` variants.
 
 ## Workflow
 
-1. **Pick a prompt** from `prompts/` — each YAML file contains one or more prompt templates
-2. **Read the baseline** — understand what it does and what variables it expects
-3. **Test manually** — use the notebook to run the baseline with sample inputs
-4. **Document test cases** — record inputs + expected outputs in your Excel sheet
-5. **Create a v2** — copy the YAML, make improvements, save as `*_v2.yaml`
-6. **Compare** — run both versions on the same inputs and compare
+### 1. Run a meeting on the platform
+
+Process a meeting through mangowater as normal. Verify speakers and generate the protocol.
+
+### 2. Check the production output
+
+Open the notebook and run **Section 0**. This fetches the prompt logs from production so you can see:
+- What system prompt was sent
+- What protocol the model returned
+- Which model was used
+
+### 3. Save the transcript locally
+
+Copy the transcript from the platform UI and save it as a `.txt` file in `test_cases/` (e.g. `meeting_02.txt`).
+
+The transcript is plain text without speaker labels — that's fine. Speaker names are passed separately in the prompt.
+
+There's a sample file `test_cases/meeting_01.txt` you can use to verify the notebook works before using real data.
+
+### 4. Run the baseline
+
+In **Section 1**, set your transcript file, speaker names, and language. Run **Section 2** to generate a protocol with the current prompts. This is your baseline.
+
+### 5. Check against your quality checklist
+
+Compare the baseline output to your AI Quality Checklist. Note what's wrong:
+- Action items too vague or missing? -> `specificity_rules`
+- Missing topics or decisions? -> `extraction_from_outline`
+- Wrong language or format? -> `base_protocol_system`
+
+### 6. Edit one block and re-run
+
+In **Section 3**, copy the block you want to change, edit it, and run again. **Change only one block at a time** so you know what helped.
+
+### 7. Compare
+
+**Section 4** shows baseline vs modified side by side. Check the checklist again. If it improved, save the result (**Section 5**) and update `prompt_builder.yaml`.
+
+## Tips
+
+- The notebook uses the same model as production (`gpt-4o`). You can switch to `gpt-4o-mini` for faster/cheaper iteration while drafting, then confirm on `gpt-4o`.
+- Each API call costs money. Don't re-run the baseline if nothing changed — only re-run when you've edited a prompt block.
+- If the model returns broken JSON, check `json_formatting_open_source` — it may need stronger instructions.
+- Real transcripts may contain sensitive info. They are gitignored by default (`test_cases/*.txt`), except the sample file.
+
+## Project Structure
+
+```
+prompts/
+├── deepgram/                  # Speaker identification
+│   ├── patterns.yaml          # Regex patterns for name detection (EN/DE)
+│   └── evidence_evaluation.yaml
+└── workflow/
+    └── prompt_builder.yaml    # All meeting protocol prompt blocks
+
+test_cases/                    # Transcript files (.txt)
+notebooks/
+└── prompt_testing.ipynb       # Main workbench
+utils/                         # API client, prompt loader
+results/                       # Saved outputs (gitignored)
+```
 
 ## Rules
 
-- **DO NOT** modify files in `prompts/` directly — these are baselines
-- Create copies with version suffixes for experiments: `supervisor_v2.yaml`, `supervisor_v3.yaml`
-- Keep the same variable placeholders (`{query}`, `{search_findings}`, etc.)
-- Test cases go in `test_cases/` as JSON (exported from your Excel tracker)
-- Results go in `results/` (gitignored, won't be committed)
-
-## Prompt Inventory
-
-| # | File | Service | What it does |
-|---|------|---------|-------------|
-| 1 | `deepsearch/supervisor.yaml` | DeepSearch | Query classification, report generation (6 templates), conflict detection |
-| 2 | `deepsearch/confluence_agent.yaml` | DeepSearch | Confluence CQL search strategy + synthesis |
-| 3 | `deepsearch/jira_agent.yaml` | DeepSearch | Jira JQL search strategy + synthesis |
-| 4 | `deepsearch/elasticsearch_agent.yaml` | DeepSearch | Elasticsearch search + German technical docs |
-| 5 | `deepsearch/websearch_agent.yaml` | DeepSearch | Web search via SearXNG |
-| 6 | `deepsearch/retriever.yaml` | DeepSearch | Answer generation + confidence scoring |
-| 7 | `deepsearch/query_reformulator.yaml` | DeepSearch | Query optimization + German compound words |
-| 8 | `deepgram/evidence_evaluation.yaml` | Deepgram | Speaker identification from transcript evidence |
-| 9 | `deepgram/patterns.yaml` | Deepgram | Regex patterns for speaker name deduplication |
-| 10 | `workflow/prompt_builder.yaml` | Workflow | Meeting protocol generation (extracted from Python) |
+- Change **one block at a time**
+- Test on at least 3 different transcripts before considering a change done
+- Save results to `results/` so you can compare later
+- When a change is validated, update `prompt_builder.yaml` directly
