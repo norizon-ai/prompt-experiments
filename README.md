@@ -145,3 +145,4 @@ results/                           # Saved experiment outputs (gitignored)
 - Test on at least 3 different transcripts before considering a change done
 - Save results to `results/` so you can compare later
 - When a change is validated, update the YAML file directly
+- When a change is validated, update the YAML file directly
